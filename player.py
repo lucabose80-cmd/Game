@@ -1,4 +1,5 @@
 import pygame
+import math
 from settings import *
 
 class Player(pygame.sprite.Sprite):
@@ -12,7 +13,7 @@ class Player(pygame.sprite.Sprite):
             frame_files = ['assets/mage_reference.png', 'assets/mage_charge.png', 'assets/mage_shoot.png']
             for file in frame_files:
                 img = pygame.image.load(file).convert_alpha()
-                self.frames.append(pygame.transform.scale(img, (TILESIZE, int(TILESIZE * 1.5))))
+                self.frames.append(pygame.transform.scale(img, (TILESIZE, TILESIZE)))
         except:
             # Fallback frames
             for _ in range(3):
@@ -83,10 +84,20 @@ class Player(pygame.sprite.Sprite):
             fb_size = int(TILESIZE * fb_scale)
             scaled_fb = pygame.transform.scale(self.fireball_raw, (fb_size, fb_size))
             
+            # Rotate fireball towards mouse
+            mouse_pos = pygame.mouse.get_pos()
+            dx = mouse_pos[0] - WIDTH // 2
+            dy = mouse_pos[1] - HEIGHT // 2
+            if dx != 0 or dy != 0:
+                angle = math.degrees(math.atan2(-dy, dx))
+                rotated_fb = pygame.transform.rotate(scaled_fb, angle)
+            else:
+                rotated_fb = scaled_fb
+            
             # Position at staff tip (approximate)
             staff_pos = (TILESIZE * 0.6, TILESIZE * 0.4)
-            fb_rect = scaled_fb.get_rect(center=staff_pos)
-            self.image.blit(scaled_fb, fb_rect)
+            fb_rect = rotated_fb.get_rect(center=staff_pos)
+            self.image.blit(rotated_fb, fb_rect)
             
             if progress >= 1.0:
                 # Shoot!
