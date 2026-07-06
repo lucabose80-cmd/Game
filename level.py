@@ -1,4 +1,5 @@
 import pygame
+import random
 from settings import *
 from player import Player
 from magic import MagicProjectile
@@ -20,19 +21,7 @@ class Level:
         self.create_map()
 
     def create_map(self):
-        WORLD_MAP = [
-            'xxxxxxxxxxxxxxxxxxxx',
-            'x                  x',
-            'x  r      r        x',
-            'x     x            x',
-            'x                  x',
-            'x      p           x',
-            'x             x    x',
-            'x    x             x',
-            'x                  x',
-            'xxxxxxxxxxxxxxxxxxxx'
-        ]
-
+        # Load rock image
         try:
             image = pygame.image.load('assets/rock.jpg').convert()
             colorkey = image.get_at((0, 0))
@@ -48,23 +37,39 @@ class Level:
             self.grass_img = pygame.Surface((TILESIZE, TILESIZE))
             self.grass_img.fill('green')
 
-        for row_index, row in enumerate(WORLD_MAP):
-            for col_index, col in enumerate(row):
-                x = col_index * TILESIZE
-                y = row_index * TILESIZE
-                if col == 'x':
-                    Tile((x, y), [self.visible_sprites, self.obstacle_sprites], 'invisible')
-                if col == 'r':
-                    Tile((x, y), [self.visible_sprites, self.obstacle_sprites], 'object', rock_img)
-                if col == 'p':
-                    self.player = Player((x, y), [self.visible_sprites], self.obstacle_sprites, self.create_magic)
+        # Procedural generation: Place rocks randomly within a 4000x4000 area
+        # Center player at 2000, 2000
+        WORLD_SIZE = 4000
+        NUM_ROCKS = 400
+        
+        self.player = Player((WORLD_SIZE//2, WORLD_SIZE//2), [self.visible_sprites], self.obstacle_sprites, self.create_magic)
+
+        # Place clusters of rocks
+        for _ in range(NUM_ROCKS // 5):
+            # Cluster center
+            cx = random.randint(100, WORLD_SIZE - 100)
+            cy = random.randint(100, WORLD_SIZE - 100)
+            
+            # Don't place on player
+            if abs(cx - WORLD_SIZE//2) < 200 and abs(cy - WORLD_SIZE//2) < 200:
+                continue
+
+            for _ in range(random.randint(3, 8)):
+                rx = cx + random.randint(-2, 2) * TILESIZE
+                ry = cy + random.randint(-2, 2) * TILESIZE
+                Tile((rx, ry), [self.visible_sprites, self.obstacle_sprites], 'object', rock_img)
 
     def create_magic(self, pos):
         mouse_pos = pygame.mouse.get_pos()
         
-        # Convert screen mouse pos to world pos based on zoom and offset
-        world_mouse_x = (mouse_pos[0] - self.visible_sprites.half_width) / self.visible_sprites.zoom_scale + self.player.rect.centerx
-        world_mouse_y = (mouse_pos[1] - self.visible_sprites.half_height) / self.visible_sprites.zoom_scale + self.player.rect.centery
+        # Convert screen mouse pos to world pos based on zoom and camera offset
+        # camera screen center = visible_sprites.half_width
+        
+        cam_topleft_x = self.player.rect.centerx - (self.visible_sprites.half_width / self.visible_sprites.zoom_scale)
+        cam_topleft_y = self.player.rect.centery - (self.visible_sprites.half_height / self.visible_sprites.zoom_scale)
+
+        world_mouse_x = cam_topleft_x + (mouse_pos[0] / self.visible_sprites.zoom_scale)
+        world_mouse_y = cam_topleft_y + (mouse_pos[1] / self.visible_sprites.zoom_scale)
         
         target_pos = (world_mouse_x, world_mouse_y)
         MagicProjectile(pos, target_pos, [self.visible_sprites, self.projectiles], self.obstacle_sprites)
@@ -80,35 +85,42 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.display_surface = pygame.display.get_surface()
         self.half_width = self.display_surface.get_size()[0] // 2
         self.half_height = self.display_surface.get_size()[1] // 2
-        self.offset = pygame.math.Vector2()
         
         # Zoom setup
         self.zoom_scale = 1.0
-        self.internal_surface_size = (2500, 2500)
-        self.internal_surface = pygame.Surface(self.internal_surface_size, pygame.SRCALPHA)
-        self.internal_rect = self.internal_surface.get_rect(center = (self.half_width, self.half_height))
-        self.internal_surface_size_vector = pygame.math.Vector2(self.internal_surface_size)
 
     def custom_draw(self, player, grass_img):
-        self.internal_surface.fill(BG_COLOR)
+        # Creating a dynamic internal surface based on zoom
+        internal_size = (int(self.display_surface.get_width() / self.zoom_scale),
+                         int(self.display_surface.get_height() / self.zoom_scale))
+        internal_surface = pygame.Surface(internal_size)
+        internal_surface.fill(BG_COLOR)
 
-        self.offset.x = player.rect.centerx - self.internal_surface_size[0] // 2
-        self.offset.y = player.rect.centery - self.internal_surface_size[1] // 2
+        # Camera offset is the player's position minus half the internal surface
+        offset_x = player.rect.centerx - internal_size[0] // 2
+        offset_y = player.rect.centery - internal_size[1] // 2
 
-        # Draw grass
-        for x in range(0, 30):
-            for y in range(0, 20):
-                pos = (x * TILESIZE - self.offset.x, y * TILESIZE - self.offset.y)
-                self.internal_surface.blit(grass_img, pos)
+        # Draw grass grid seamlessly (only what is visible)
+        start_x = int(offset_x // TILESIZE)
+        start_y = int(offset_y // TILESIZE)
+        cols = int(internal_size[0] // TILESIZE) + 2
+        rows = int(internal_size[1] // TILESIZE) + 2
+
+        for col in range(start_x, start_x + cols):
+            for row in range(start_y, start_y + rows):
+                pos = (col * TILESIZE - offset_x, row * TILESIZE - offset_y)
+                internal_surface.blit(grass_img, pos)
 
         # Draw sprites
         for sprite in sorted(self.sprites(), key=lambda sprite: sprite.rect.centery):
             if hasattr(sprite, 'sprite_type') and sprite.sprite_type == 'invisible':
                 continue
-            offset_pos = sprite.rect.topleft - self.offset
-            self.internal_surface.blit(sprite.image, offset_pos)
+            
+            # Simple frustum culling: only draw if inside internal surface
+            offset_pos = sprite.rect.topleft - pygame.math.Vector2(offset_x, offset_y)
+            if -100 < offset_pos.x < internal_size[0] + 100 and -100 < offset_pos.y < internal_size[1] + 100:
+                internal_surface.blit(sprite.image, offset_pos)
 
-        # Scale and blit internal surface
-        scaled_surf = pygame.transform.scale(self.internal_surface, self.internal_surface_size_vector * self.zoom_scale)
-        scaled_rect = scaled_surf.get_rect(center = (self.half_width, self.half_height))
-        self.display_surface.blit(scaled_surf, scaled_rect)
+        # Scale to display and blit
+        scaled_surf = pygame.transform.scale(internal_surface, self.display_surface.get_size())
+        self.display_surface.blit(scaled_surf, (0, 0))

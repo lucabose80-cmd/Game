@@ -6,14 +6,13 @@ class Player(pygame.sprite.Sprite):
         super().__init__(groups)
         self.create_magic = create_magic
         try:
-            image = pygame.image.load('assets/player.jpg').convert()
-            colorkey = image.get_at((0, 0))
-            image.set_colorkey(colorkey)
-            self.image = pygame.transform.scale(image, (TILESIZE, TILESIZE))
+            self.original_image = pygame.image.load('assets/player.png').convert_alpha()
+            self.original_image = pygame.transform.scale(self.original_image, (TILESIZE, int(TILESIZE * 1.2)))
         except:
-            self.image = pygame.Surface((TILESIZE, TILESIZE))
-            self.image.fill('red')
+            self.original_image = pygame.Surface((TILESIZE, TILESIZE), pygame.SRCALPHA)
+            self.original_image.fill('red')
             
+        self.image = self.original_image.copy()
         self.rect = self.image.get_rect(topleft=pos)
         self.hitbox = self.rect.inflate(-10, -26)
 
@@ -21,12 +20,17 @@ class Player(pygame.sprite.Sprite):
         self.speed = 5
         self.obstacle_sprites = obstacle_sprites
         
-        # Magic cooldown
-        self.can_shoot = True
+        # Magic cooldown and animation
+        self.is_casting = False
         self.shoot_time = 0
         self.shoot_cooldown = 400 # ms
 
     def input(self):
+        if self.is_casting:
+            self.direction.x = 0
+            self.direction.y = 0
+            return
+
         keys = pygame.key.get_pressed()
         mouse_buttons = pygame.mouse.get_pressed()
 
@@ -44,16 +48,25 @@ class Player(pygame.sprite.Sprite):
         else:
             self.direction.x = 0
 
-        if mouse_buttons[0] and self.can_shoot: # Left click
-            self.can_shoot = False
+        if mouse_buttons[0]: # Left click
+            self.is_casting = True
             self.shoot_time = pygame.time.get_ticks()
             self.create_magic(self.rect.center)
 
-    def cooldowns(self):
+    def cooldowns_and_animations(self):
         current_time = pygame.time.get_ticks()
-        if not self.can_shoot:
+        if self.is_casting:
             if current_time - self.shoot_time >= self.shoot_cooldown:
-                self.can_shoot = True
+                self.is_casting = False
+                self.image = self.original_image.copy()
+            else:
+                # Procedural casting animation: slight tilt and scale
+                angle = 15 * (1 - (current_time - self.shoot_time) / self.shoot_cooldown)
+                rotated = pygame.transform.rotozoom(self.original_image, angle, 1.1)
+                # Recenter
+                center = self.rect.center
+                self.image = rotated
+                self.rect = self.image.get_rect(center=center)
 
     def move(self, speed):
         if self.direction.magnitude() != 0:
@@ -63,7 +76,9 @@ class Player(pygame.sprite.Sprite):
         self.collision('horizontal')
         self.hitbox.y += self.direction.y * speed
         self.collision('vertical')
-        self.rect.center = self.hitbox.center
+        
+        if not self.is_casting:
+            self.rect.center = self.hitbox.center
 
     def collision(self, direction):
         if direction == 'horizontal':
@@ -84,5 +99,5 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         self.input()
-        self.cooldowns()
+        self.cooldowns_and_animations()
         self.move(self.speed)
