@@ -1,5 +1,11 @@
 import pygame
 import sys
+import os
+
+# PyInstaller asset handling
+if getattr(sys, 'frozen', False):
+    os.chdir(sys._MEIPASS)
+
 from settings import *
 from level import Level
 
