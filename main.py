@@ -17,6 +17,13 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if event.type == pygame.MOUSEWHEEL:
+                    self.level.visible_sprites.zoom_scale += event.y * 0.1
+                    # Clamp zoom
+                    if self.level.visible_sprites.zoom_scale < 0.5:
+                        self.level.visible_sprites.zoom_scale = 0.5
+                    if self.level.visible_sprites.zoom_scale > 2.0:
+                        self.level.visible_sprites.zoom_scale = 2.0
 
             self.screen.fill(BG_COLOR)
             self.level.run()
