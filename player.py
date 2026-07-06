@@ -5,16 +5,28 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, pos, groups, obstacle_sprites, create_magic):
         super().__init__(groups)
         self.create_magic = create_magic
+        
+        self.frames = []
         try:
-            self.original_image = pygame.image.load('assets/player.png').convert_alpha()
-            self.original_image = pygame.transform.scale(self.original_image, (TILESIZE, int(TILESIZE * 1.2)))
-        except:
-            self.original_image = pygame.Surface((TILESIZE, TILESIZE), pygame.SRCALPHA)
-            self.original_image.fill('red')
+            sheet = pygame.image.load('assets/mage_sheet.png').convert_alpha()
+            sheet_w = sheet.get_width()
+            sheet_h = sheet.get_height()
+            frame_w = sheet_w // 3
             
-        self.image = self.original_image.copy()
+            for i in range(3):
+                frame_surface = pygame.Surface((frame_w, sheet_h), pygame.SRCALPHA)
+                frame_surface.blit(sheet, (0, 0), (i * frame_w, 0, frame_w, sheet_h))
+                self.frames.append(pygame.transform.scale(frame_surface, (TILESIZE, int(TILESIZE * 1.5))))
+        except:
+            # Fallback frames if sheet fails
+            for _ in range(3):
+                surf = pygame.Surface((TILESIZE, TILESIZE))
+                surf.fill('red')
+                self.frames.append(surf)
+                
+        self.image = self.frames[0]
         self.rect = self.image.get_rect(topleft=pos)
-        self.hitbox = self.rect.inflate(-10, -26)
+        self.hitbox = self.rect.inflate(-20, -30)
 
         self.direction = pygame.math.Vector2()
         self.speed = 5
@@ -56,17 +68,18 @@ class Player(pygame.sprite.Sprite):
     def cooldowns_and_animations(self):
         current_time = pygame.time.get_ticks()
         if self.is_casting:
-            if current_time - self.shoot_time >= self.shoot_cooldown:
+            time_passed = current_time - self.shoot_time
+            if time_passed >= self.shoot_cooldown:
                 self.is_casting = False
-                self.image = self.original_image.copy()
+                self.image = self.frames[0]
             else:
-                # Procedural casting animation: slight tilt and scale
-                angle = 15 * (1 - (current_time - self.shoot_time) / self.shoot_cooldown)
-                rotated = pygame.transform.rotozoom(self.original_image, angle, 1.1)
-                # Recenter
-                center = self.rect.center
-                self.image = rotated
-                self.rect = self.image.get_rect(center=center)
+                # Calculate which frame to show
+                progress = time_passed / self.shoot_cooldown
+                frame_idx = int(progress * 3) # 0, 1, or 2
+                if frame_idx > 2: frame_idx = 2
+                self.image = self.frames[frame_idx]
+        else:
+            self.image = self.frames[0]
 
     def move(self, speed):
         if self.direction.magnitude() != 0:

@@ -28,7 +28,9 @@ def remove_background(image_path, output_path, tolerance=50):
     pygame.quit()
 
 if __name__ == "__main__":
-    if os.path.exists("assets/player.jpg"):
-        remove_background("assets/player.jpg", "assets/player.png", tolerance=60)
-    if os.path.exists("assets/magic.jpg"):
-        remove_background("assets/magic.jpg", "assets/magic.png", tolerance=60)
+    if os.path.exists("assets/rock_organic.jpg"):
+        remove_background("assets/rock_organic.jpg", "assets/rock_organic.png", tolerance=80)
+    if os.path.exists("assets/grass_tuft.jpg"):
+        remove_background("assets/grass_tuft.jpg", "assets/grass_tuft.png", tolerance=80)
+    if os.path.exists("assets/mage_sheet.jpg"):
+        remove_background("assets/mage_sheet.jpg", "assets/mage_sheet.png", tolerance=80)
