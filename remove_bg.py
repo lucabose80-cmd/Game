@@ -32,5 +32,9 @@ if __name__ == "__main__":
         remove_background("assets/rock_organic.jpg", "assets/rock_organic.png", tolerance=80)
     if os.path.exists("assets/grass_tuft.jpg"):
         remove_background("assets/grass_tuft.jpg", "assets/grass_tuft.png", tolerance=80)
-    if os.path.exists("assets/mage_sheet.jpg"):
-        remove_background("assets/mage_sheet.jpg", "assets/mage_sheet.png", tolerance=80)
+    if os.path.exists("assets/player.jpg"):
+        remove_background("assets/player.jpg", "assets/player.png", tolerance=80)
+    if os.path.exists("assets/mage_cast_1.jpg"):
+        remove_background("assets/mage_cast_1.jpg", "assets/mage_cast_1.png", tolerance=80)
+    if os.path.exists("assets/mage_cast_2.jpg"):
+        remove_background("assets/mage_cast_2.jpg", "assets/mage_cast_2.png", tolerance=80)

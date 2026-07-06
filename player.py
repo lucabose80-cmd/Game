@@ -8,17 +8,13 @@ class Player(pygame.sprite.Sprite):
         
         self.frames = []
         try:
-            sheet = pygame.image.load('assets/mage_sheet.png').convert_alpha()
-            sheet_w = sheet.get_width()
-            sheet_h = sheet.get_height()
-            frame_w = sheet_w // 3
-            
-            for i in range(3):
-                frame_surface = pygame.Surface((frame_w, sheet_h), pygame.SRCALPHA)
-                frame_surface.blit(sheet, (0, 0), (i * frame_w, 0, frame_w, sheet_h))
-                self.frames.append(pygame.transform.scale(frame_surface, (TILESIZE, int(TILESIZE * 1.5))))
+            # Load individual frames
+            frame_files = ['assets/player.png', 'assets/mage_cast_1.png', 'assets/mage_cast_2.png']
+            for file in frame_files:
+                img = pygame.image.load(file).convert_alpha()
+                self.frames.append(pygame.transform.scale(img, (TILESIZE, int(TILESIZE * 1.5))))
         except:
-            # Fallback frames if sheet fails
+            # Fallback frames
             for _ in range(3):
                 surf = pygame.Surface((TILESIZE, TILESIZE))
                 surf.fill('red')
