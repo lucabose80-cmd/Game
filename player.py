@@ -112,7 +112,7 @@ class Player(pygame.sprite.Sprite):
         self.hitbox.y += self.direction.y * speed
         self.collision('vertical')
         
-        if not self.is_casting:
+        if not (self.is_charging or self.is_shooting):
             self.rect.center = self.hitbox.center
 
     def collision(self, direction):
