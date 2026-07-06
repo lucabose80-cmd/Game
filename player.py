@@ -8,8 +8,8 @@ class Player(pygame.sprite.Sprite):
         
         self.frames = []
         try:
-            # Load individual frames
-            frame_files = ['assets/player.png', 'assets/mage_cast_1.png', 'assets/mage_cast_2.png']
+            # Load master reference and poses
+            frame_files = ['assets/mage_reference.png', 'assets/mage_charge.png', 'assets/mage_shoot.png']
             for file in frame_files:
                 img = pygame.image.load(file).convert_alpha()
                 self.frames.append(pygame.transform.scale(img, (TILESIZE, int(TILESIZE * 1.5))))
@@ -20,7 +20,13 @@ class Player(pygame.sprite.Sprite):
                 surf.fill('red')
                 self.frames.append(surf)
                 
-        self.image = self.frames[0]
+        try:
+            self.fireball_raw = pygame.image.load('assets/fireball.png').convert_alpha()
+        except:
+            self.fireball_raw = pygame.Surface((32, 32), pygame.SRCALPHA)
+            pygame.draw.circle(self.fireball_raw, 'orange', (16, 16), 16)
+                
+        self.image = self.frames[0].copy()
         self.rect = self.image.get_rect(topleft=pos)
         self.hitbox = self.rect.inflate(-20, -30)
 
@@ -28,13 +34,15 @@ class Player(pygame.sprite.Sprite):
         self.speed = 5
         self.obstacle_sprites = obstacle_sprites
         
-        # Magic cooldown and animation
-        self.is_casting = False
-        self.shoot_time = 0
-        self.shoot_cooldown = 400 # ms
+        # Magic animation states
+        self.is_charging = False
+        self.is_shooting = False
+        self.action_time = 0
+        self.charge_duration = 300 # ms (approx 18 frames)
+        self.shoot_duration = 150 # ms
 
     def input(self):
-        if self.is_casting:
+        if self.is_charging or self.is_shooting:
             self.direction.x = 0
             self.direction.y = 0
             return
@@ -57,25 +65,43 @@ class Player(pygame.sprite.Sprite):
             self.direction.x = 0
 
         if mouse_buttons[0]: # Left click
-            self.is_casting = True
-            self.shoot_time = pygame.time.get_ticks()
-            self.create_magic(self.rect.center)
+            self.is_charging = True
+            self.action_time = pygame.time.get_ticks()
 
     def cooldowns_and_animations(self):
         current_time = pygame.time.get_ticks()
-        if self.is_casting:
-            time_passed = current_time - self.shoot_time
-            if time_passed >= self.shoot_cooldown:
-                self.is_casting = False
-                self.image = self.frames[0]
-            else:
-                # Calculate which frame to show
-                progress = time_passed / self.shoot_cooldown
-                frame_idx = int(progress * 3) # 0, 1, or 2
-                if frame_idx > 2: frame_idx = 2
-                self.image = self.frames[frame_idx]
+        
+        if self.is_charging:
+            time_passed = current_time - self.action_time
+            progress = min(time_passed / self.charge_duration, 1.0)
+            
+            # Start with charge frame
+            self.image = self.frames[1].copy()
+            
+            # Draw growing fireball
+            fb_scale = 0.2 + (progress * 1.0) # grows from 0.2x to 1.2x
+            fb_size = int(TILESIZE * fb_scale)
+            scaled_fb = pygame.transform.scale(self.fireball_raw, (fb_size, fb_size))
+            
+            # Position at staff tip (approximate)
+            staff_pos = (TILESIZE * 0.6, TILESIZE * 0.4)
+            fb_rect = scaled_fb.get_rect(center=staff_pos)
+            self.image.blit(scaled_fb, fb_rect)
+            
+            if progress >= 1.0:
+                # Shoot!
+                self.is_charging = False
+                self.is_shooting = True
+                self.action_time = current_time
+                self.create_magic(self.rect.center)
+                
+        elif self.is_shooting:
+            self.image = self.frames[2].copy()
+            if current_time - self.action_time >= self.shoot_duration:
+                self.is_shooting = False
+                
         else:
-            self.image = self.frames[0]
+            self.image = self.frames[0].copy()
 
     def move(self, speed):
         if self.direction.magnitude() != 0:

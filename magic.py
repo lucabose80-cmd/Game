@@ -6,11 +6,11 @@ class MagicProjectile(pygame.sprite.Sprite):
     def __init__(self, pos, target_pos, groups, obstacle_sprites):
         super().__init__(groups)
         try:
-            image = pygame.image.load('assets/magic.png').convert_alpha()
+            image = pygame.image.load('assets/fireball.png').convert_alpha()
             self.image = pygame.transform.scale(image, (TILESIZE//2, TILESIZE//2))
         except:
             self.image = pygame.Surface((TILESIZE//2, TILESIZE//2), pygame.SRCALPHA)
-            pygame.draw.circle(self.image, 'blue', (TILESIZE//4, TILESIZE//4), TILESIZE//4)
+            pygame.draw.circle(self.image, 'orange', (TILESIZE//4, TILESIZE//4), TILESIZE//4)
         
         self.rect = self.image.get_rect(center=pos)
         self.hitbox = self.rect.inflate(0, 0)
