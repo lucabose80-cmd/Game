@@ -13,7 +13,7 @@ class Player(pygame.sprite.Sprite):
             frame_files = ['assets/mage_reference.png', 'assets/mage_charge.png', 'assets/mage_shoot.png']
             for file in frame_files:
                 img = pygame.image.load(file).convert_alpha()
-                self.frames.append(pygame.transform.scale(img, (TILESIZE, TILESIZE)))
+                self.frames.append(pygame.transform.smoothscale(img, (TILESIZE, TILESIZE)))
         except:
             # Fallback frames
             for _ in range(3):
@@ -82,21 +82,28 @@ class Player(pygame.sprite.Sprite):
             # Draw growing fireball
             fb_scale = 0.2 + (progress * 1.0) # grows from 0.2x to 1.2x
             fb_size = int(TILESIZE * fb_scale)
-            scaled_fb = pygame.transform.scale(self.fireball_raw, (fb_size, fb_size))
+            scaled_fb = pygame.transform.smoothscale(self.fireball_raw, (fb_size, fb_size))
             
             # Rotate fireball towards mouse
             mouse_pos = pygame.mouse.get_pos()
             dx = mouse_pos[0] - WIDTH // 2
             dy = mouse_pos[1] - HEIGHT // 2
+            
+            angle = 0
             if dx != 0 or dy != 0:
                 angle = math.degrees(math.atan2(-dy, dx))
-                rotated_fb = pygame.transform.rotate(scaled_fb, angle)
-            else:
-                rotated_fb = scaled_fb
             
-            # Position at staff tip (approximate)
-            staff_pos = (TILESIZE * 0.6, TILESIZE * 0.4)
-            fb_rect = rotated_fb.get_rect(center=staff_pos)
+            rotated_fb = pygame.transform.rotate(scaled_fb, angle)
+            
+            # Position fireball dynamically around the mage in the direction of the mouse
+            tip_distance = TILESIZE * 0.4
+            rad = math.atan2(dy, dx)
+            local_center_x = TILESIZE / 2
+            local_center_y = TILESIZE / 2
+            tip_x = local_center_x + math.cos(rad) * tip_distance
+            tip_y = local_center_y + math.sin(rad) * tip_distance
+            
+            fb_rect = rotated_fb.get_rect(center=(tip_x, tip_y))
             self.image.blit(rotated_fb, fb_rect)
             
             if progress >= 1.0:
@@ -104,7 +111,9 @@ class Player(pygame.sprite.Sprite):
                 self.is_charging = False
                 self.is_shooting = True
                 self.action_time = current_time
-                self.create_magic(self.rect.center)
+                world_tip_x = self.rect.x + tip_x
+                world_tip_y = self.rect.y + tip_y
+                self.create_magic((world_tip_x, world_tip_y))
                 
         elif self.is_shooting:
             self.image = self.frames[2].copy()

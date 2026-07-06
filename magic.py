@@ -7,7 +7,7 @@ class MagicProjectile(pygame.sprite.Sprite):
         super().__init__(groups)
         try:
             image = pygame.image.load('assets/fireball.png').convert_alpha()
-            self.image = pygame.transform.scale(image, (TILESIZE//2, TILESIZE//2))
+            self.image = pygame.transform.smoothscale(image, (TILESIZE//2, TILESIZE//2))
         except:
             self.image = pygame.Surface((TILESIZE//2, TILESIZE//2), pygame.SRCALPHA)
             pygame.draw.circle(self.image, 'orange', (TILESIZE//4, TILESIZE//4), TILESIZE//4)
